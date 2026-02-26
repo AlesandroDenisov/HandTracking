@@ -1,0 +1,111 @@
+apply plugin: 'com.android.library'
+apply from: '../shared/keepUnitySymbols.gradle'
+**APPLY_PLUGINS**
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+**DEPS**}
+
+android {
+    namespace "com.unity3d.player"
+    ndkVersion "**NDKVERSION**"
+    ndkPath "**NDKPATH**"
+    compileSdk **APIVERSION**
+    buildToolsVersion '**BUILDTOOLS**'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    defaultConfig {
+**DEFAULT_CONFIG_SETUP**
+        minSdk **MINSDK**
+        targetSdk **TARGETSDK**
+        ndk {
+            debugSymbolLevel **DEBUGSYMBOLLEVEL**
+            abiFilters **ABIFILTERS**
+        }
+        versionCode **VERSIONCODE**
+        versionName '**VERSIONNAME**'
+        consumerProguardFiles 'proguard-unity.txt'**USER_PROGUARD**
+    }
+
+    lint {
+        abortOnError false
+    }
+
+    androidResources {
+        noCompress = [**STREAMING_ASSETS**] + unityStreamingAssets.tokenize(', ')
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
+    }**PACKAGING****SPLITS**
+**LIBRARY_SOURCE_DIRECTORIES**
+}
+**IL_CPP_BUILD_SETUP**
+**SOURCE_BUILD_SETUP**
+**EXTERNAL_SOURCES**
+
+// ============================================
+// КРИТИЧЕСКИ ВАЖНО: Include libc++_shared.so
+// Без этого APK крашится на старте
+// ============================================
+task copyLibcppShared {
+    doLast {
+        def ndkDir = android.ndkDirectory
+        def abiFilters = android.defaultConfig.ndk.abiFilters
+        def destDir = file("$projectDir/src/main/jniLibs")
+
+        def abiToTriple = [
+            'arm64-v8a': 'aarch64-linux-android',
+            'armeabi-v7a': 'arm-linux-androideabi',
+            'x86': 'i686-linux-android',
+            'x86_64': 'x86_64-linux-android'
+        ]
+
+        def prebuiltDir = null
+        def prebuiltBase = file("$ndkDir/toolchains/llvm/prebuilt")
+        if (prebuiltBase.exists()) {
+            def prebuiltDirs = prebuiltBase.listFiles()?.findAll { it.isDirectory() }
+            if (prebuiltDirs && prebuiltDirs.size() > 0) {
+                prebuiltDir = prebuiltDirs[0]
+            }
+        }
+
+        abiFilters.each { abi ->
+            if (prebuiltDir != null) {
+                def triple = abiToTriple[abi]
+                if (triple != null) {
+                    def libcppPath = file("$prebuiltDir/sysroot/usr/lib/$triple/libc++_shared.so")
+                    if (libcppPath.exists()) {
+                        def destAbiDir = file("$destDir/$abi")
+                        copy {
+                            from libcppPath
+                            into destAbiDir
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+task cleanCopyLibcppShared {
+    doLast {
+        def destDir = file("$projectDir/src/main/jniLibs")
+        def abiFilters = android.defaultConfig.ndk.abiFilters
+
+        abiFilters.each { abi ->
+            def libcppFile = file("$destDir/$abi/libc++_shared.so")
+            if (libcppFile.exists()) {
+                libcppFile.delete()
+            }
+        }
+    }
+}
+clean.dependsOn 'cleanCopyLibcppShared'
+
+tasks.whenTaskAdded { task ->
+    if (task.name == "mergeDebugJniLibFolders" || task.name == "mergeReleaseJniLibFolders") {
+        task.dependsOn("copyLibcppShared")
+    }
+}
