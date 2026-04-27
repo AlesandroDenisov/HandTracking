@@ -4,12 +4,9 @@ Real-time hand landmark detection on Android using **Unity 6** and **MediaPipe**
 
 ---
 
-## Demo
+## Video Demo
 
-[![Watch Demo on YouTube](https://img.youtube.com/vi/WgTET3-1kDE/hqdefault.jpg)](https://www.youtube.com/embed/WgTET3-1kDE)
-
-[<img src="https://img.youtube.com/vi/WgTET3-1kDE/hqdefault.jpg" width="640" height="480"
-/>](https://www.youtube.com/embed/WgTET3-1kDE)
+https://github.com/user-attachments/assets/1595675f-16ab-40a4-8c5c-47e1a52a91ae
 
 ---
 
